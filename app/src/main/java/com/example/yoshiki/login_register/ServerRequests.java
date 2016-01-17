@@ -3,23 +3,12 @@ package com.example.yoshiki.login_register;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.AsyncTask;
-import android.util.Log;
-
-import java.util.ArrayList;
-
-import org.apache.http.HttpConnection;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
-import org.apache.http.util.EntityUtils;
+import com.squareup.okhttp.FormEncodingBuilder;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.RequestBody;
+import com.squareup.okhttp.Response;
+import java.io.IOException;
 import org.json.JSONObject;
 
 /**
@@ -29,7 +18,8 @@ public class ServerRequests {
 
     ProgressDialog progressDialog;
     public static final int CONNECTION_TIMEOUT = 1000 * 15;
-    public static final String SERVER_ADDRESS = "http://192.168.153.140:3000";
+    public static final String SERVER_ADDRESS = "http://192.168.1.11:3000";
+    public static final String TAG = "mytag";
 
     public ServerRequests(Context context){
         progressDialog = new ProgressDialog(context);
@@ -60,23 +50,29 @@ public class ServerRequests {
 
         @Override
         protected Void doInBackground(Void... params) {
-            ArrayList<NameValuePair> dataToSend = new ArrayList<>();
-            dataToSend.add(new BasicNameValuePair("name", user.name));
-            dataToSend.add(new BasicNameValuePair("age", user.age + ""));
-            dataToSend.add(new BasicNameValuePair("username", user.username));
-            dataToSend.add(new BasicNameValuePair("password", user.password));
 
-            HttpParams httpRequestParams = new BasicHttpParams();
-            HttpConnectionParams.setConnectionTimeout(httpRequestParams, CONNECTION_TIMEOUT);
-            HttpConnectionParams.setSoTimeout(httpRequestParams, CONNECTION_TIMEOUT);
+            RequestBody requestbody = new FormEncodingBuilder()
+                    .add("name", user.name)
+                    .add("age", user.age + "")
+                    .add("username", user.username)
+                    .add("password", user.password)
+                    .build();
 
-            HttpClient client = new DefaultHttpClient(httpRequestParams);
-            HttpPost post = new HttpPost(SERVER_ADDRESS + "/registers");
+            Request request = new Request.Builder()
+                    .url(SERVER_ADDRESS + "/registers")
+                    .post(requestbody)
+                    .build();
 
-            try{
-                post.setEntity(new UrlEncodedFormEntity(dataToSend));
-                client.execute(post);
-            }catch (Exception e){
+            OkHttpClient client = new OkHttpClient();
+
+            try {
+
+                Response response = client.newCall(request).execute();
+                String result = response.body().toString();
+
+            } catch (java.net.MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e){
                 e.printStackTrace();
             }
 
@@ -103,39 +99,45 @@ public class ServerRequests {
 
         @Override
         protected User doInBackground(Void... params) {
-            ArrayList<NameValuePair> dataToSend = new ArrayList<>();
-            dataToSend.add(new BasicNameValuePair("username", user.username));
-            dataToSend.add(new BasicNameValuePair("password", user.password));
 
-            HttpParams httpRequestParams = new BasicHttpParams();
-            HttpConnectionParams.setConnectionTimeout(httpRequestParams, CONNECTION_TIMEOUT);
-            HttpConnectionParams.setSoTimeout(httpRequestParams, CONNECTION_TIMEOUT);
+            RequestBody requestbody = new FormEncodingBuilder()
+                    .add("username", user.username)
+                    .add("password", user.password)
+                    .build();
 
-            HttpClient client = new DefaultHttpClient(httpRequestParams);
-            HttpPost post = new HttpPost(SERVER_ADDRESS + "/registers/fetch");
+            Request request = new Request.Builder()
+                    .url(SERVER_ADDRESS + "/registers/fetch")
+                    .post(requestbody)
+                    .build();
+
+            OkHttpClient client = new OkHttpClient();
 
             User returnedUser = null;
-            try{
-                post.setEntity(new UrlEncodedFormEntity(dataToSend));
-                HttpResponse httpResponse = client.execute(post);
+            try {
 
-                HttpEntity entity = httpResponse.getEntity();
-                String result = EntityUtils.toString(entity);
+                Response response = client.newCall(request).execute();
+                String result = response.body().string();
                 JSONObject jObject = new JSONObject(result);
 
                 if(jObject.length() == 0){
                     user = null;
                 }else{
+
                     String name = jObject.getString("name");
                     int age = jObject.getInt("age");
                     returnedUser = new User(user.username, user.password, name, age);
                 }
 
-            }catch (Exception e){
+            } catch (java.net.MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e){
+                e.printStackTrace();
+            } catch (Exception e){
                 e.printStackTrace();
             }
 
             return returnedUser;
+
         }
 
         @Override
